@@ -14,20 +14,36 @@ app = dash.Dash(external_stylesheets=[dbc.themes.SLATE])
 
 data = pd.read_csv('fotmob_players.csv')
 
-table_p1 = dash_table.DataTable(
-    id='datatable',
-    data=data.to_dict('records'),
-    columns=[{'id': c, 'name': c, 'hideable':True} for c in data.columns],
+grouped_data = data.groupby(['first_name','last_name', 'team_name'])[['minutes', 'xGoals', 'xAssists', 'xGI', 'goals',
+                                                                      'assists', 'shots', 'key_passes', 'corners',
+                                                                      'def_act']].sum()
+grouped_data = grouped_data.reset_index()
+grouped_data[['xGoals', 'xAssists', 'xGI']] = grouped_data[['xGoals', 'xAssists', 'xGI']].round(decimals = 2)
+
+latest_gw = data['match_round'].max()
+l5 = data.loc[(data['match_round'] >= (latest_gw-5)) & (data['match_round'] <= latest_gw)]
+last_5 = l5.groupby(['first_name','last_name', 'team_name'])[['minutes', 'xGoals','xAssists', 'xGI', 'goals', 'assists',
+                                                              'shots', 'key_passes', 'corners', 'def_act']].sum()
+last_5 = last_5.reset_index()
+last_5[['xGoals', 'xAssists', 'xGI']] = last_5[['xGoals', 'xAssists', 'xGI']].round(decimals = 2)
+
+#-----------------------------------------------------------------------------------------------------------------------
+
+#PAGE 1-----------------------------------------------------------------------------------------------------------------
+
+table_tot = dash_table.DataTable(
+    id='datatable_tot',
+    data=grouped_data.to_dict('records'),
+    columns=[{'id': c, 'name': c} for c in grouped_data.columns],
     page_size=20,
     sort_action='native',
     cell_selectable=False,
-    hidden_columns=['Unnamed: 0','id'],
-    style_cell={'font-family':'sans-serif','textAlign': 'center'},
+    style_cell={'font-family':'sans-serif','textAlign': 'right'},
     style_cell_conditional=[
         {
             'if': {'column_id': c},
             'textAlign': 'left'
-        } for c in ['first_name', 'second_name', 'team', 'position']
+        } for c in ['first_name', 'last_name', 'team_name']
     ],
     style_table={'overflowX': 'auto'},
     style_as_list_view=True,
@@ -41,20 +57,78 @@ table_p1 = dash_table.DataTable(
     }]
 )
 
-dropdown_p1 = html.Div(
+table_l5 = dash_table.DataTable(
+    id='datatable_l5',
+    data=last_5.to_dict('records'),
+    columns=[{'id': c, 'name': c} for c in grouped_data.columns],
+    page_size=20,
+    sort_action='native',
+    cell_selectable=False,
+    style_cell={'font-family':'sans-serif','textAlign': 'right'},
+    style_cell_conditional=[
+        {
+            'if': {'column_id': c},
+            'textAlign': 'left'
+        } for c in ['first_name', 'last_name', 'team_name']
+    ],
+    style_table={'overflowX': 'auto'},
+    style_as_list_view=True,
+    style_data_conditional=[{
+        'backgroundColor': 'rgb(30, 30, 30)',
+        'color': 'white'
+    }],
+    style_header_conditional=[{
+        'backgroundColor': 'rgb(30, 30, 30)',
+        'color': 'white'
+    }]
+)
+
+table_bgw = dash_table.DataTable(
+    id='datatable_bgw',
+    data=data.to_dict('records'),
+    columns=[{'id': c, 'name': c} for c in data.columns],
+    page_size=20,
+    sort_action='native',
+    cell_selectable=False,
+    style_cell={'font-family':'sans-serif','textAlign': 'right'},
+    style_cell_conditional=[
+        {
+            'if': {'column_id': c},
+            'textAlign': 'left'
+        } for c in ['first_name', 'last_name', 'team_name']
+    ],
+    style_table={'overflowX': 'auto'},
+    style_as_list_view=True,
+    style_data_conditional=[{
+        'backgroundColor': 'rgb(30, 30, 30)',
+        'color': 'white'
+    }],
+    style_header_conditional=[{
+        'backgroundColor': 'rgb(30, 30, 30)',
+        'color': 'white'
+    }]
+)
+
+dropdown_bgw = html.Div(
     [
-        dbc.DropdownMenu(
-            [
-                dbc.DropdownMenuItem(
-                    "Last 5 GWs", id="dropdown-button", n_clicks=0
-                ),
-                dbc.DropdownMenuItem(
-                    "All GWs", id="dropdown-button2", n_clicks=0
-                )
-            ],
-            label="Select GWs",
+        dcc.Dropdown(
+                    id='dropdown_bgw',
+                    options=[{'label':i, 'value':i} for i in data['match_round'].unique()],
+                    value=None,
+                    placeholder='Select gameweek...'
         ),
-        html.P(id="item-clicks", className="mt-3"),
+        dcc.Dropdown(
+                    id='dropdown_bgw2',
+                    options=[{'label':i, 'value':i} for i in data['last_name'].unique()],
+                    value=None,
+                    placeholder='Select player...'
+        ),
+        dcc.Dropdown(
+                    id='dropdown_bgw3',
+                    options=[{'label': i, 'value': i} for i in sorted(data['team_name'].unique())],
+                    value=None,
+                    placeholder='Select team...'
+        )
     ]
 )
 
@@ -69,6 +143,33 @@ text_input2 = html.Div(
         dbc.Input(id="input", placeholder="Enter your league ID...", type="text"),
         html.Br(),
         html.P(id="output")])
+
+accordion = html.Div(
+    dbc.Accordion(
+        [
+            dbc.AccordionItem(
+                [
+                    table_tot
+                ],
+                title="Total",
+            ),
+            dbc.AccordionItem(
+                [
+                    table_l5
+                ],
+                title="Last 5 gws",
+            ),
+            dbc.AccordionItem(
+                [
+                    dropdown_bgw,
+                    table_bgw
+                ],
+                title="By Gameweek",
+             ),
+
+        ],
+        start_collapsed=True
+    ))
 #-----------------------------------------------------------------------------------------------------------------------
 app.layout = html.Div(
     [
@@ -79,7 +180,7 @@ app.layout = html.Div(
                 dbc.NavLink("Stats from Allsvenskan Fantasy", href="/page-1", active="exact"),
                 dbc.NavLink("Stats from Twelve", href="/page-2", active="exact"),
             ],
-            brand="Allsvenkan analytics",
+            brand="Allsvenskan analytics",
             color="primary",
             dark=True,
         ),
@@ -93,8 +194,7 @@ app.layout = html.Div(
 def render_page_content(pathname):
     if pathname == "/":
         return [
-            dropdown_p1,
-            table_p1
+            accordion
         ]
     elif pathname == "/page-1":
         return [
@@ -111,28 +211,33 @@ def render_page_content(pathname):
         ]
     )
 
-@app.callback(
-    Output("datatable", "data"),
-    [Input("dropdown-button", "n_clicks")],
-    [Input("dropdown-button2", "n_clicks")],
-)
-def count_clicks(*args):
-    ctx = dash.callback_context
-
-    if not ctx.triggered:
-        button_id = "all"
+@app.callback(Output("datatable_bgw", "data"), [Input("dropdown_bgw", "value"), Input("dropdown_bgw2", "value"),
+                                            Input("dropdown_bgw3", "value")])
+def update_datatable_bgw(d1, d2, d3):
+    if (d1 != None and d2 != None and d3 != None):
+        filtered_df = data[(data["match_round"] == d1) & (data["last_name"] == d2) & (data["team_name"] == d3)]
+        return filtered_df.to_dict("records")
+    if (d1 != None and d2 != None and d3 == None):
+        filtered_df = data[(data["match_round"] == d1) & (data["last_name"] == d2)]
+        return filtered_df.to_dict("records")
+    if (d1 != None and d2 == None and d3 != None):
+        filtered_df = data[(data["match_round"] == d1) & (data["team_name"] == d3)]
+        return filtered_df.to_dict("records")
+    if (d1 == None and d2 != None and d3 != None):
+        filtered_df = data[(data["last_name"] == d2) & (data["team_name"] == d3)]
+        return filtered_df.to_dict("records")
+    if (d1 != None and d2 == None and d3 == None):
+        filtered_df = data[data['match_round'] == d1]
+        return filtered_df.to_dict("records")
+    if (d1 == None and d2 != None and d3 == None):
+        filtered_df = data[data['last_name'] == d2]
+        return filtered_df.to_dict("records")
+    if (d1 == None and d2 == None and d3 != None):
+        filtered_df = data[data['team_name'] == d3]
+        return filtered_df.to_dict("records")
     else:
-        button_id = ctx.triggered[0]["prop_id"].split(".")[0]
-
-    if button_id == 'dropdown-button':
-        df = data.loc[data["Last"] == 'L5']
-    elif button_id == 'dropdown-button2':
-        df = data.loc[data["Last"] == 'All']
-    else:
-        df = pd.read_csv('fotmob_players.csv')
-
-    return df.to_dict('records')
-
+        filtered_df = data
+        return filtered_df.to_dict("records")
 #-----------------------------------------------------------------------------------------------------------------------
 
 

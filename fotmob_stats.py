@@ -1,6 +1,5 @@
 import pandas as pd
 import requests
-import json
 
 matches = pd.read_csv('fotmob_matcher_22.csv')
 match_id = matches['match_id'].tolist()
@@ -27,8 +26,8 @@ def get_match_data(match_id):
                                         'starts',
                                         'sub_in',
                                         'minutes',
-                                        'xG',
-                                        'xA',
+                                        'xGoals',
+                                        'xAassists',
                                         'goals',
                                         'assists',
                                         'shots',
@@ -65,9 +64,9 @@ def append_player_data_to_dataframe(player, team_name, match_round, df):
     except:
         sub_in = 0
     try:
-        minutes = float(player['minutesPlayed'])
+        minutes = player['minutesPlayed']
     except:
-        minutes = 0.0
+        minutes = 0
     try:
         xG = float(player['stats'][0]['stats']['Expected goals (xG)'])
     except:
@@ -105,7 +104,7 @@ def append_player_data_to_dataframe(player, team_name, match_round, df):
     except:
         clearances = 0
     try:
-        blocked_shots = player['stats'][2]['stats']['Blocked shots']
+        blocked_shots = player['stats'][2]['stats']['Blocks']
     except:
         blocked_shots = 0
     try:
@@ -147,8 +146,8 @@ def append_player_data_to_dataframe(player, team_name, match_round, df):
         'starts',
         'sub_in',
         'minutes',
-        'xG',
-        'xA',
+        'xGoals',
+        'xAssists',
         'goals',
         'assists',
         'shots',
@@ -170,8 +169,8 @@ columns= [
     'starts',
     'sub_in',
     'minutes',
-    'xG',
-    'xA',
+    'xGoals',
+    'xAssists',
     'goals',
     'assists',
     'shots',
@@ -189,4 +188,21 @@ for match in match_id:
 players_data.loc[players_data['match_id'] == 3805038, 'match_round'] = '7'
 players_data.loc[players_data['match_id'] == 3805009, 'match_round'] = '8'
 
-players_data.to_csv('fotmob_players.csv')
+players_data[['match_round', 'minutes', 'goals', 'assists',
+    'shots', 'key_passes', 'corners', 'recoveries',
+    'clearances', 'blocked_shots', 'interceptions']] = players_data[['match_round', 'minutes', 'goals', 'assists',
+                                                                     'shots', 'key_passes', 'corners', 'recoveries',
+                                                                     'clearances', 'blocked_shots',
+                                                                     'interceptions']].astype(int)
+
+players_data['xGI'] = players_data['xGoals'] + players_data['xAssists']
+players_data['def_act'] = players_data['recoveries'] + players_data['clearances'] + players_data['blocked_shots'] \
+                          + players_data['interceptions']
+
+df = players_data[['first_name','last_name','team_name', 'match_round', 'minutes', 'xGoals', 'xAssists', 'xGI', 'goals',
+                   'assists', 'shots', 'key_passes', 'corners', 'def_act', 'recoveries', 'clearances', 'blocked_shots',
+                   'interceptions']].reset_index(drop=True)
+
+df = df.sort_values(by=['match_round', 'last_name'])
+
+df.to_csv('fotmob_players.csv',index=False)
