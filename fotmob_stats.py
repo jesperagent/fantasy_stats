@@ -196,13 +196,14 @@ players_data[['match_round', 'minutes', 'goals', 'assists',
                                                                      'interceptions']].astype(int)
 
 players_data['xGI'] = players_data['xGoals'] + players_data['xAssists']
+players_data['xGI'] = players_data['xGI'].round(decimals = 2)
 players_data['def_act'] = players_data['recoveries'] + players_data['clearances'] + players_data['blocked_shots'] \
                           + players_data['interceptions']
-
-df = players_data[['first_name','last_name','team_name', 'match_round', 'minutes', 'xGoals', 'xAssists', 'xGI', 'goals',
+players_data['name'] = players_data["first_name"] + str(' ') + players_data["last_name"]
+df = players_data[['name','team_name', 'match_round', 'minutes', 'xGoals', 'xAssists', 'xGI', 'goals',
                    'assists', 'shots', 'key_passes', 'corners', 'def_act', 'recoveries', 'clearances', 'blocked_shots',
                    'interceptions']].reset_index(drop=True)
 
-df = df.sort_values(by=['match_round', 'last_name'])
+df = df.sort_values(by=['match_round', 'name'])
 
 df.to_csv('fotmob_players.csv',index=False)
